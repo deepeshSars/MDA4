@@ -22,7 +22,6 @@ pipeline {
             steps {
                 dir('terraform') {
                     sh 'terraform init'
-                    sh 'terraform destroy -auto-approve -var="aws_access_key=${aws_access_key}" -var="aws_secret_key=${aws_secret_key}" -var-file="terraform.tfvars" || true'
                     sh 'terraform apply -auto-approve -var="aws_access_key=${aws_access_key}" -var="aws_secret_key=${aws_secret_key}" -var-file="terraform.tfvars"'
                 }
             }
