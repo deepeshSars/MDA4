@@ -25,7 +25,7 @@ variable "private_subnets" {
 variable "availability_zones" {
   description = "List of availability zones"
   type        = list(string)
-  default     = ["us-west-1a"]
+  default     = ["ap-south-1a"]
 }
 
 variable "security_group_description" {
@@ -43,7 +43,7 @@ variable "private_subnet_association" {
 variable "private_subnet_az" {
   description = "Availability zone for private subnet"
   type        = string
-  default     = "us-west-1c"
+  default     = "ap-south-1b"
 }
 
 variable "private_route_table" {
