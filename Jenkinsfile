@@ -30,13 +30,13 @@ pipeline {
         stage("Build") {
             steps {
                 dir('docker/database') {
-                    sh 'DOCKER_BUILDKIT=1 docker build -t ${REGISTRY}/studentapp-db .'
+                    sh 'docker buildx build -t ${REGISTRY}/studentapp-db .'
                 }
                 dir('docker/backend') {
-                    sh 'DOCKER_BUILDKIT=1 docker build -t ${REGISTRY}/studentapp-be .'
+                    sh 'docker buildx build -t ${REGISTRY}/studentapp-be .'
                 }
                 dir('docker/frontend') {
-                    sh 'DOCKER_BUILDKIT=1 docker build -t ${REGISTRY}/studentapp-fe .'
+                    sh 'docker buildx build -t ${REGISTRY}/studentapp-fe .'
                 }
             }
         }
