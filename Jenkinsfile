@@ -1,6 +1,6 @@
 pipeline {
     agent any
-
+ 
     environment {
         REGISTRY = 'docker.io/dipu12'
         aws_access_key = credentials('aws-access-key')
@@ -22,6 +22,7 @@ pipeline {
             steps {
                 dir('terraform') {
                     sh 'terraform init'
+                    sh 'terraform destroy -auto-approve -var="aws_access_key=${aws_access_key}" -var="aws_secret_key=${aws_secret_key}" -var-file="terraform.tfvars"'
                     sh 'terraform apply -auto-approve -var="aws_access_key=${aws_access_key}" -var="aws_secret_key=${aws_secret_key}" -var-file="terraform.tfvars"'
                 }
             }
@@ -30,13 +31,13 @@ pipeline {
         stage("Build") {
             steps {
                 dir('docker/database') {
-                    sh 'DOCKER_BUILDKIT=1 docker build -t ${REGISTRY}/studentapp-db .'
+                    sh 'docker build -t ${REGISTRY}/studentapp-db .'
                 }
                 dir('docker/backend') {
-                    sh 'DOCKER_BUILDKIT=1 docker build -t ${REGISTRY}/studentapp-be .'
+                    sh 'docker build -t ${REGISTRY}/studentapp-be .'
                 }
                 dir('docker/frontend') {
-                    sh 'DOCKER_BUILDKIT=1 docker build -t ${REGISTRY}/studentapp-fe .'
+                    sh 'docker build -t ${REGISTRY}/studentapp-fe .'
                 }
             }
         }
@@ -59,14 +60,6 @@ pipeline {
                 }
                 dir('kubernetes/Frontend') {
                     sh 'kubectl apply -f .'
-                }
-            }
-        }
-
-        stage("Destroy Infrastructure") {
-            steps {
-                dir('terraform') {
-                    sh 'terraform destroy -auto-approve -var="aws_access_key=${aws_access_key}" -var="aws_secret_key=${aws_secret_key}" -var-file="terraform.tfvars"'
                 }
             }
         }
