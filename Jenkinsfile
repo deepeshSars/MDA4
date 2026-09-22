@@ -30,13 +30,13 @@ pipeline {
         stage("Build") {
             steps {
                 dir('docker/database') {
-                    sh 'docker buildx build -t ${REGISTRY}/studentapp-db .'
+                    sh 'docker build --build-arg BUILDKIT_INLINE_CACHE=1 -t ${REGISTRY}/studentapp-db .'
                 }
                 dir('docker/backend') {
-                    sh 'docker buildx build -t ${REGISTRY}/studentapp-be .'
+                    sh 'docker build --build-arg BUILDKIT_INLINE_CACHE=1 -t ${REGISTRY}/studentapp-be .'
                 }
                 dir('docker/frontend') {
-                    sh 'docker buildx build -t ${REGISTRY}/studentapp-fe .'
+                    sh 'docker build --build-arg BUILDKIT_INLINE_CACHE=1 -t ${REGISTRY}/studentapp-fe .'
                 }
             }
         }
