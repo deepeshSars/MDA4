@@ -1,66 +1,87 @@
 pipeline {
     agent any
- 
+
     environment {
         REGISTRY = 'docker.io/dipu12'
-        aws_access_key = credentials('aws-access-key')
-        aws_secret_key = credentials('aws-secret-key')
     }
 
     options {
-        skipDefaultCheckout false
+        skipDefaultCheckout true
     }
 
     stages {
-        stage("Checkout") {
+        stage('Pull stage') {
             steps {
-                git branch: 'main', url: 'https://github.com/deepeshSars/MDA4.git'
+                git url: 'https://github.com/deepeshSars/MDA4.git', branch: 'main'
             }
         }
 
-        stage("Infrastructure") {
-            steps {
-                dir('terraform') {
-                    sh 'terraform init'
-                    sh 'terraform destroy -auto-approve -var="aws_access_key=${aws_access_key}" -var="aws_secret_key=${aws_secret_key}" -var-file="terraform.tfvars"'
-                }
-            }
-        }
-
-        stage("Build") {
+        stage('Build') {
             steps {
                 dir('docker/database') {
-                    sh 'docker build -t ${REGISTRY}/studentapp-db .'
+                    sh 'docker build -t ${REGISTRY}/studentapp-db:latest .'
                 }
                 dir('docker/backend') {
-                    sh 'docker build -t ${REGISTRY}/studentapp-be .'
+                    sh 'docker build -t ${REGISTRY}/studentapp-be:latest .'
                 }
                 dir('docker/frontend') {
-                    sh 'docker build -t ${REGISTRY}/studentapp-fe .'
+                    sh 'docker build -t ${REGISTRY}/studentapp-fe:latest .'
                 }
             }
         }
 
-        stage("Push") {
+        stage('Push stage') {
             steps {
-                sh 'docker push ${REGISTRY}/studentapp-db'
-                sh 'docker push ${REGISTRY}/studentapp-be'
-                sh 'docker push ${REGISTRY}/studentapp-fe'
+                withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
+                }
+                sh 'docker push ${REGISTRY}/studentapp-db:latest'
+                sh 'docker push ${REGISTRY}/studentapp-be:latest'
+                sh 'docker push ${REGISTRY}/studentapp-fe:latest'
             }
         }
 
-        stage("Deploy") {
+        stage('Deploy') {
             steps {
-                dir('kubernetes/Database') {
-                    sh 'kubectl apply -f .'
-                }
-                dir('kubernetes/Backend') {
-                    sh 'kubectl apply -f .'
-                }
-                dir('kubernetes/Frontend') {
-                    sh 'kubectl apply -f .'
-                }
+                // Stop existing containers
+                sh 'docker stop studentapp-db studentapp-be studentapp-fe || true'
+                sh 'docker rm studentapp-db studentapp-be studentapp-fe || true'
+
+                // Create network if not exists
+                sh 'docker network create studentapp-network || true'
+
+                // Run database
+                sh 'docker run -d --name studentapp-db --network studentapp-network -p 3306:3306 ${REGISTRY}/studentapp-db:latest'
+
+                // Wait for database to be ready
+                sh 'sleep 30'
+
+                // Run backend
+                sh 'docker run -d --name studentapp-be --network studentapp-network -p 8081:8080 ${REGISTRY}/studentapp-be:latest'
+
+                // Wait for backend to be ready
+                sh 'sleep 20'
+
+                // Run frontend
+                sh 'docker run -d --name studentapp-fe --network studentapp-network -p 80:80 ${REGISTRY}/studentapp-fe:latest'
             }
+        }
+
+        stage('Verify') {
+            steps {
+                sh 'docker ps'
+                sh 'curl -f http://localhost:80 || echo "Frontend check failed"'
+                sh 'curl -f http://localhost:8081 || echo "Backend check failed"'
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "Pipeline completed successfully!"
+        }
+        failure {
+            echo "Pipeline failed. Check logs for details."
         }
     }
 }
